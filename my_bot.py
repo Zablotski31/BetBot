@@ -69,6 +69,8 @@ class BetBot:
 
     @classmethod
     async def add_bettor(cls, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        print(f"Trying to create a new bettor. Context.args={context.args}")
+
         if not context.args:
             await update.message.reply_text(
                 "❌ Нужно написать имя и фамилию.\nПример: /add_bettor Антон Петров"
@@ -87,11 +89,15 @@ class BetBot:
             await update.message.reply_text(f"✅ Беттор добавлен:\n👤 {full_name}")
             await cls.menu_command(update, context)
         except Exception as e:
+            print(f"Faild to create bettor. Fullname={full_name}")
             await update.message.reply_text(f"❌ Ошибка: {e}")
+
+        print(f"Created a new bettor. Fullname={full_name}")
 
     @classmethod
     async def list_bettors(cls, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Показать всех бетторов"""
+        print("Trying to list bettors")
+
         with DbRepository() as db_repository:
             cursor = db_repository.connection.cursor()
             cursor.execute("""
@@ -101,18 +107,17 @@ class BetBot:
                     COUNT(bets.id) as bets_count
                 FROM bettors b
                 LEFT JOIN bets ON b.id = bets.bettor_id
-                GROUP BY b.id
+                GROUP BY b.id, b.full_name
                 ORDER BY b.full_name
             """)
             bettors = cursor.fetchall()
 
             if not bettors:
                 await update.message.reply_text("📭 Пока нет ни одного беттора.")
-                await main_menu(update, context)
+                await cls.menu_command(update, context)
                 return
 
             text = "📋 *СПИСОК БЕТТОРОВ:*\n\n"
-
             for b in bettors:
                 text += f"🆔 *{b['id']}* | 👤 {b['full_name']}\n"
                 text += f"   📊 Ставок: {b['bets_count']}\n\n"
@@ -124,6 +129,7 @@ class BetBot:
                 [KeyboardButton("🏠 Главное меню")],
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
             await update.message.reply_text(
                 "Выберите действие:", reply_markup=reply_markup
             )
