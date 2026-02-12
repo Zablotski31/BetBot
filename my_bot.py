@@ -99,18 +99,7 @@ class BetBot:
         print("Trying to list bettors")
 
         with DbRepository() as db_repository:
-            cursor = db_repository.connection.cursor()
-            cursor.execute("""
-                SELECT 
-                    b.id, 
-                    b.full_name,
-                    COUNT(bets.id) as bets_count
-                FROM bettors b
-                LEFT JOIN bets ON b.id = bets.bettor_id
-                GROUP BY b.id, b.full_name
-                ORDER BY b.full_name
-            """)
-            bettors = cursor.fetchall()
+            bettors = db_repository.list_bettors()
 
             if not bettors:
                 await update.message.reply_text("📭 Пока нет ни одного беттора.")

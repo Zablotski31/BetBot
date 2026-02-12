@@ -115,6 +115,5 @@ class DbRepository:
             GROUP BY b.id
             ORDER BY b.full_name
         """)
-        bettors = cursor.fetchall()
-
-        return bettors
+        
+        return cursor.fetchall()
