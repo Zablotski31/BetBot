@@ -17,4 +17,7 @@ app.add_handler(CommandHandler("start", BetBot.start))
 app.add_handler(CommandHandler("help", BetBot.help_command))
 app.add_handler(CommandHandler("menu", BetBot.menu_command))
 
+app.add_handler(CommandHandler("add_bettor", BetBot.add_bettor))
+app.add_handler(CommandHandler("bettors", BetBot.list_bettors))
+
 app.run_polling(allowed_updates=Update.ALL_TYPES)

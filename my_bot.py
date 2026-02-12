@@ -1,6 +1,8 @@
 from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
 
+from db_repository import DbRepository
+
 
 class BetBot:
     def __init__(self) -> None:
@@ -64,3 +66,64 @@ class BetBot:
             "/help - эта справка",
             reply_markup=reply_markup,
         )
+
+    @classmethod
+    async def add_bettor(cls, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not context.args:
+            await update.message.reply_text(
+                "❌ Нужно написать имя и фамилию.\nПример: /add_bettor Антон Петров"
+            )
+            return
+
+        full_name = " ".join(context.args)
+
+        try:
+            with DbRepository() as db_repository:
+                cursor = db_repository.connection.cursor()
+                cursor.execute(
+                    "INSERT INTO bettors (full_name) VALUES (?)", (full_name,)
+                )
+
+            await update.message.reply_text(f"✅ Беттор добавлен:\n👤 {full_name}")
+            await cls.menu_command(update, context)
+        except Exception as e:
+            await update.message.reply_text(f"❌ Ошибка: {e}")
+
+    @classmethod
+    async def list_bettors(cls, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Показать всех бетторов"""
+        with DbRepository() as db_repository:
+            cursor = db_repository.connection.cursor()
+            cursor.execute("""
+                SELECT 
+                    b.id, 
+                    b.full_name,
+                    COUNT(bets.id) as bets_count
+                FROM bettors b
+                LEFT JOIN bets ON b.id = bets.bettor_id
+                GROUP BY b.id
+                ORDER BY b.full_name
+            """)
+            bettors = cursor.fetchall()
+
+            if not bettors:
+                await update.message.reply_text("📭 Пока нет ни одного беттора.")
+                await main_menu(update, context)
+                return
+
+            text = "📋 *СПИСОК БЕТТОРОВ:*\n\n"
+
+            for b in bettors:
+                text += f"🆔 *{b['id']}* | 👤 {b['full_name']}\n"
+                text += f"   📊 Ставок: {b['bets_count']}\n\n"
+
+            await update.message.reply_text(text, parse_mode="Markdown")
+
+            keyboard = [
+                [KeyboardButton("❌ Удалить беттора")],
+                [KeyboardButton("🏠 Главное меню")],
+            ]
+            reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            await update.message.reply_text(
+                "Выберите действие:", reply_markup=reply_markup
+            )
